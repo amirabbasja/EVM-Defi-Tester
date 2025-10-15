@@ -1,0 +1,2 @@
+deployArbSep:
+	forge script script/UniswapV2Deployer.s.sol --rpc-url arbitrum_sepolia --keystore ~/.foundry/keystores/main --broadcast --verify
