@@ -1,4 +1,10 @@
 {
+  "lib/base64": {
+    "tag": {
+      "name": "v1.1.0",
+      "rev": "dcbf852ba545b3d15de0ac0ef88dce934c090c8e"
+    }
+  },
   "lib/forge-std": {
     "tag": {
       "name": "v1.11.0",
@@ -11,6 +17,30 @@
       "rev": "c64a1edb67b6e3f4a15cca8909c9482ad33a02b0"
     }
   },
+  "lib/openzipplin_3.4.0_uniswapV3": {
+    "tag": {
+      "name": "v3.4.0",
+      "rev": "fa64a1ced0b70ab89073d5d0b6e01b0778f7e7d6"
+    }
+  },
+  "lib/openzipplin_3.4.1_uniswapV3": {
+    "tag": {
+      "name": "v3.4.1",
+      "rev": "cec0800c541c809f883a37f2dfb91ec4c90263c5"
+    }
+  },
+  "lib/openzipplin_3.4.2_uniswapV3": {
+    "tag": {
+      "name": "v3.4.2",
+      "rev": "8e0296096449d9b1cd7c5631e917330635244c37"
+    }
+  },
+  "lib/openzipplin_4.0.0_uniswapV3": {
+    "tag": {
+      "name": "v4.0.0",
+      "rev": "a673994de5eba4305cefb8ae98ea9ad37a43efaa"
+    }
+  },
   "lib/solidity-lib": {
     "tag": {
       "name": "v2.1.0",
@@ -20,6 +50,12 @@
   "lib/solmate": {
     "rev": "89365b880c4f3c786bdd453d4b8e8fe410344a69"
   },
+  "lib/swap-router-contracts": {
+    "tag": {
+      "name": "v1.3.0",
+      "rev": "c696aada49b33c8e764e6f0bd0a0a56bd8aa455f"
+    }
+  },
   "lib/v2-core": {
     "tag": {
       "name": "v1.0.1",
@@ -28,5 +64,17 @@
   },
   "lib/v2-periphery": {
     "rev": "0335e8f7e1bd1e8d8329fd300aea2ef2f36dd19f"
+  },
+  "lib/v3-core": {
+    "tag": {
+      "name": "v1.0.0",
+      "rev": "e3589b192d0be27e100cd0daaf6c97204fdb1899"
+    }
+  },
+  "lib/v3-periphery": {
+    "tag": {
+      "name": "v1.3.0",
+      "rev": "80f26c86c57b8a5e4b913f42844d4c8bd274d058"
+    }
   }
 }
