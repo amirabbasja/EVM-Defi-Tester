@@ -27,7 +27,7 @@ contract UniswapV3Tester is Test {
     IUniswapV3Factory uniV3Factory = IUniswapV3Factory(UNISWAP_V3_FACTORY);
     INonfungiblePositionManager uniV3PositionManager = INonfungiblePositionManager(UNISWAP_V3_POSITION_MANAGER);
     INonfungibleTokenPositionDescriptor uniV3PositionDescriptor = INonfungibleTokenPositionDescriptor(UNISWAP_V3_POSITION_DESCRIPTOR);
-    ISwapRouter02 uniV3Router = ISwapRouter02(UNISWAP_V3_ROUTER);
+    ISwapRouter02 uniV3SwapRouter02 = ISwapRouter02(UNISWAP_V3_ROUTER);
     
     // Addresses
     address constant WETH_MAINNET = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -36,42 +36,25 @@ contract UniswapV3Tester is Test {
     IMockWETH9 public WETH; // WETH - mainnet address: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
     IMMockERC20 public USDT; // USDT - mainnet address: 0xdAC17F958D2ee523a2206206994597C13D831ec7
 
-    function setUp() public {
-        // Tokens -  Deploy to the mainnet addresses
-        // WETH
-        deployCodeTo(
-            "MockWETH9.sol",
-            abi.encode("Wrapper Ether", "WETH", 18),
-            WETH_MAINNET
-        );
-        WETH = IMockWETH9(WETH_MAINNET);
-        // USDT
-        deployCodeTo(
-            "MockERC20.sol",
-            abi.encode("Tether Usdt", "USDT", 6),
-            USDT_MAINNET
-        );
-        USDT = IMMockERC20(USDT_MAINNET);
-
-        // Deploy Uniswap v3 stack
-        UniswapV3Deployer deployerUniV3 = new UniswapV3Deployer();
-        deployerUniV3.run();
+    // Struct for created pool's data
+    struct PoolData {
+        address pool;
+        uint24 fee;
+        int24 tickLower;
+        int24 tickUpper;
+        uint256 amount0Desired;
+        uint256 amount1Desired;
+        uint256 tokenId;
+        uint128 liquidity;
+        uint256 amount0;
+        uint256 amount1;
     }
 
-    function test_UniV3FactoryDeployment() public {
-        // Check to see if there is code at the address
-        assert(address(UNISWAP_V3_FACTORY).code.length > 0);
+    PoolData internal _PoolData;
 
-        // Check constructor deployment
-        assertEq(uniV3Factory.feeAmountTickSpacing(500), 10);
-    }
 
-    function test_NonfungiblePositionManagerDeployment() public {
-        // Check to see if there is code at the address
-        assert(address(UNISWAP_V3_POSITION_MANAGER).code.length > 0);
-    }
-
-    function test_AddLiquidityToUniswapV3Pool() public {
+    modifier withWethUsdtPoolDefault()
+    {
         // Ensure we have ETH to wrap as WETH
         vm.deal(address(this), 100 ether);
 
@@ -122,15 +105,97 @@ contract UniswapV3Tester is Test {
         });
 
         (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = uniV3PositionManager.mint(params);
+        _PoolData = PoolData({
+            pool: pool,
+            fee: fee,
+            tickLower: tickLower,
+            tickUpper: tickUpper,
+            amount0Desired: amount0Desired,
+            amount1Desired: amount1Desired,
+            tokenId: tokenId,
+            liquidity: liquidity,
+            amount0: amount0,
+            amount1: amount1
+        });
+
+        _;
+    }
+
+    function setUp() public {
+        // Tokens -  Deploy to the mainnet addresses
+        // WETH
+        deployCodeTo(
+            "MockWETH9.sol",
+            abi.encode("Wrapper Ether", "WETH", 18),
+            WETH_MAINNET
+        );
+        WETH = IMockWETH9(WETH_MAINNET);
+        // USDT
+        deployCodeTo(
+            "MockERC20.sol",
+            abi.encode("Tether Usdt", "USDT", 6),
+            USDT_MAINNET
+        );
+        USDT = IMMockERC20(USDT_MAINNET);
+
+        // Deploy Uniswap v3 stack
+        UniswapV3Deployer deployerUniV3 = new UniswapV3Deployer();
+        deployerUniV3.run();
+    }
+
+    function test_UniV3FactoryDeployment() public view {
+        // Check to see if there is code at the address
+        assert(address(UNISWAP_V3_FACTORY).code.length > 0);
+
+        // Check constructor deployment
+        assertEq(uniV3Factory.feeAmountTickSpacing(500), 10);
+    }
+
+    function test_NonfungiblePositionManagerDeployment() public view {
+        // Check to see if there is code at the address
+        assert(address(UNISWAP_V3_POSITION_MANAGER).code.length > 0);
+    }
+
+    function test_AddLiquidityToUniswapV3Pool() public withWethUsdtPoolDefault {
 
         // Assertions: position minted and pool has liquidity
-        console.log("Minted tokenId: ", tokenId);
-        console.log("Liquidity: ", liquidity);
-        console.log("Amount0: ", amount0);
-        console.log("Amount1: ", amount1);
-        assert(tokenId != 0);
-        assert(liquidity > 0);
-        assert(amount0 > 0 && amount1 > 0);
-        assert(IUniswapV3Pool(pool).liquidity() > 0);
+        console.log("Minted tokenId: ", _PoolData.tokenId);
+        console.log("Liquidity: ", _PoolData.liquidity);
+        console.log("Amount0: ", _PoolData.amount0);
+        console.log("Amount1: ", _PoolData.amount1);
+        assert(_PoolData.tokenId != 0);
+        assert(_PoolData.liquidity > 0);
+        assert(_PoolData.amount0 > 0 && _PoolData.amount1 > 0);
+        assert(IUniswapV3Pool(_PoolData.pool).liquidity() > 0);
+    }
+
+    function test_SwapTokensForTokens() public withWethUsdtPoolDefault {
+        address testAddr = makeAddr("testAddr");
+        address[] memory _path = new address[](2);
+        _path[0] = WETH_MAINNET;
+        _path[1] = USDT_MAINNET;
+    
+        // Fund the swapper with WETH and approve the router
+        vm.startPrank(testAddr);
+        vm.deal(testAddr, 1 ether);
+        WETH.deposit{value: 0.1 ether}();
+        WETH.approve(address(uniV3SwapRouter02), type(uint256).max);
+        console.log("Swapping 0.1 WETH for USDT...");
+        console.log("WETH balance before swap: ", WETH.balanceOf(address(testAddr)));
+    
+        ISwapRouter02.ExactInputSingleParams memory params = ISwapRouter02.ExactInputSingleParams({
+            tokenIn: WETH_MAINNET,
+            tokenOut: USDT_MAINNET,
+            fee: _PoolData.fee,          // uses the 500 fee pool you created
+            recipient: testAddr,
+            amountIn: 0.1 ether,
+            amountOutMinimum: 0,
+            sqrtPriceLimitX96: 0
+        });
+        uniV3SwapRouter02.exactInputSingle(params);
+        vm.stopPrank();
+        
+        console.log("WETH balance after swap: ", WETH.balanceOf(address(testAddr)));
+        console.log("USDT balance after swap: ", USDT.balanceOf(address(testAddr)));
     }
 }
