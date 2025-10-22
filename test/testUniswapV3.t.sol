@@ -124,6 +124,10 @@ contract UniswapV3Tester is Test {
         (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = uniV3PositionManager.mint(params);
 
         // Assertions: position minted and pool has liquidity
+        console.log("Minted tokenId: ", tokenId);
+        console.log("Liquidity: ", liquidity);
+        console.log("Amount0: ", amount0);
+        console.log("Amount1: ", amount1);
         assert(tokenId != 0);
         assert(liquidity > 0);
         assert(amount0 > 0 && amount1 > 0);
