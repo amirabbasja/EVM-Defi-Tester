@@ -4,8 +4,6 @@ import {Test} from "../lib/forge-std/src/Test.sol";
 import {console} from "../lib/forge-std/src/console.sol";
 import {MMockERC20} from "./Mocks/MMockERC20.sol";
 import {Token} from "../src/Token.sol";
-import {IMockWETH9} from "./Mocks/IMockWETH9.sol";
-import {IMMockERC20} from "./Mocks/IMMockERC20.sol";
 
 // Interfaces
 import {IUniswapV3Factory} from "./interfaces/IUniswapV3Factory.sol";
@@ -13,6 +11,9 @@ import {ISwapRouter02} from "./interfaces/ISwapRouter02.sol";
 import {INonfungiblePositionManager} from "./interfaces/INonfungiblePositionManager.sol";
 import {INonfungibleTokenPositionDescriptor} from "./interfaces/INonfungibleTokenPositionDescriptor.sol";
 import {IUniswapV3Pool} from "../lib/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import {IMockWETH9} from "./Mocks/IMockWETH9.sol";
+import {IMMockERC20} from "./Mocks/IMMockERC20.sol";
+
 
 // Deployers
 import {UniswapV3Deployer} from "../script/UniswapV3Deployer.s.sol";
@@ -53,8 +54,7 @@ contract UniswapV3Tester is Test {
     PoolData internal _PoolData;
 
 
-    modifier withWethUsdtPoolDefault()
-    {
+    modifier withWethUsdtPoolDefault() {
         // Ensure we have ETH to wrap as WETH
         vm.deal(address(this), 100 ether);
 
