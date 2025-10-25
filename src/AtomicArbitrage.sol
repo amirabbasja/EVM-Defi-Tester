@@ -44,9 +44,9 @@ contract AtomicArbitrage {
     }
 
     constructor(
-    address WETH9Address,
-    address idx0_address,
-    address idx1_address
+        address WETH9Address,
+        address idx0_address, // UniswapV2Router02 address
+        address idx1_address // UniswapV3SwapRouter address
     ) {
         i_owner = msg.sender;
         i_WETH9 = IWETH9(WETH9Address);
