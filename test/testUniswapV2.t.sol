@@ -10,8 +10,8 @@ import {IUniswapV2Factory}  from "../lib/v2-core/contracts/interfaces/IUniswapV2
 import {IUniswapV2Router02} from "../lib/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import {IUniswapV2Router01} from "../lib/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
 import {IUniswapV2Pair} from "../lib/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
-import {IMockWETH9} from "./Mocks/IMockWETH9.sol";
-import {IMMockERC20} from "./Mocks/IMMockERC20.sol";
+import {IMockWETH9} from "./interfaces/IMockWETH9.sol";
+import {IMMockERC20} from "./interfaces/IMMockERC20.sol";
 
 // Deployers
 import {UniswapV2Deployer} from "../script/UniswapV2Deployer.s.sol";

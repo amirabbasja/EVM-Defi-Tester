@@ -11,8 +11,8 @@ import {ISwapRouter02} from "./interfaces/ISwapRouter02.sol";
 import {INonfungiblePositionManager} from "./interfaces/INonfungiblePositionManager.sol";
 import {INonfungibleTokenPositionDescriptor} from "./interfaces/INonfungibleTokenPositionDescriptor.sol";
 import {IUniswapV3Pool} from "../lib/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {IMockWETH9} from "./Mocks/IMockWETH9.sol";
-import {IMMockERC20} from "./Mocks/IMMockERC20.sol";
+import {IMockWETH9} from "./interfaces/IMockWETH9.sol";
+import {IMMockERC20} from "./interfaces/IMMockERC20.sol";
 
 
 // Deployers

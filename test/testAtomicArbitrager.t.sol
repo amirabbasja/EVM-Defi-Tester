@@ -4,16 +4,14 @@ pragma solidity >=0.8.5;
 import {Test} from "../lib/forge-std/src/Test.sol";
 import {console} from "../lib/forge-std/src/console.sol";
 import {AtomicArbitrage} from "../src/AtomicArbitrage.sol";
-import {MockWETH9} from "./Mocks/MockWETH9.sol";
-import {MockERC20} from "./Mocks/MockERC20.sol";
 
 // Exchange deployers
 import {UniswapV2Deployer} from "../script/UniswapV2Deployer.s.sol";
 import {UniswapV3Deployer} from "../script/UniswapV3Deployer.s.sol";
 
 // Interfaces
-import {IMockWETH9} from "./Mocks/IMockWETH9.sol";
-import {IMockERC20} from "./Mocks/IMockERC20.sol";
+import {IMockWETH9} from "./interfaces/IMockWETH9.sol";
+import {IMockERC20} from "./interfaces/IMockERC20.sol";
 
 // Interfaces - Uniswap v2
 import {IUniswapV2Factory}  from "../lib/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
@@ -54,8 +52,6 @@ contract AtomicArbitragerTester is Test {
     // Tokens
     IMockWETH9 WETH;
     IMockERC20 USDT;
-
-    MockWETH9 mockWETH9 = new MockWETH9();
 
     // Modifiers
     // Modifiers - Uniswap v2 pool deployment
