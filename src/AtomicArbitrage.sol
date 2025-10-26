@@ -7,6 +7,7 @@ import {IERC20} from "./interfaces/IERC20.sol";
 import {IUniswapV2Router02} from "./interfaces/IUniswapV2Router02.sol";
 import {ISwapRouter02} from "./interfaces/ISwapRouter02.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
+import {ICamelotRouter} from "./interfaces/ICamelotRouter.sol";
 
 contract AtomicArbitrage {
     /**
@@ -21,6 +22,7 @@ contract AtomicArbitrage {
     ISwapRouter02 private immutable i_uniswapV3Router;
     IUniswapV2Router02 private immutable i_sushiswapV2Router02;
     ISwapRouter private immutable i_sushiswapV3Router;
+    ICamelotRouter private immutable i_camelotRouter;
 
 
     struct SwapParams {
@@ -52,7 +54,8 @@ contract AtomicArbitrage {
         address idx0_address, // UniswapV2Router02 address
         address idx1_address, // UniswapV3SwapRouter address
         address idx2_address, // SushiswapV2Router02 address
-        address idx3_address // SushiswapV3SwapRouter address
+        address idx3_address, // SushiswapV3SwapRouter address
+        address idx4_address // CamelotV2Router address
     ) {
         i_owner = msg.sender;
         i_WETH9 = IWETH9(WETH9Address);
@@ -60,6 +63,7 @@ contract AtomicArbitrage {
         i_uniswapV3Router = ISwapRouter02(idx1_address);
         i_sushiswapV2Router02 = IUniswapV2Router02(idx2_address);
         i_sushiswapV3Router = ISwapRouter(idx3_address);
+        i_camelotRouter = ICamelotRouter(idx4_address);
     }
 
     /**
@@ -140,6 +144,8 @@ contract AtomicArbitrage {
             _swapSushiswapV2(p);
         } else if (idx == 3) {
             _swapSushiswapV3(p);
+        } else if (idx == 4) {
+            _swapCamelotV2(p);
         } else {
             revert("ERR2");
         }
@@ -218,6 +224,25 @@ contract AtomicArbitrage {
         });
 
         i_sushiswapV3Router.exactInputSingle(params);
+    }
+
+    function _swapCamelotV2(SwapParams memory p) public {
+        // Ensiure allowance. TODO: Remove this?
+        _ensureAllowance(p.tokenIn, address(i_camelotRouter), p.amountIn);
+
+        address[] memory path;
+        path = new address[](2);
+        path[0] = p.tokenIn;
+        path[1] = p.tokenOut;
+        
+        i_camelotRouter.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            p.amountIn,
+            0,
+            path,
+            p.recipient,
+            p.recipient,
+            p.deadline
+        );
     }
 
     function _ensureAllowance(address token, address spender, uint256 amount) internal {

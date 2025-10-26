@@ -10,6 +10,7 @@ import {UniswapV2Deployer} from "../script/UniswapV2Deployer.s.sol";
 import {UniswapV3Deployer} from "../script/UniswapV3Deployer.s.sol";
 import {SushiswapV2Deployer} from "../script/SushiswapV2Deployer.s.sol";
 import {SushiswapV3Deployer} from "../script/SushiswapV3Deployer.s.sol";
+import {CamelotV2Deployer} from "../script/CamelotV2Deployer.s.sol";
 
 
 // Interfaces
@@ -35,6 +36,11 @@ import {IUniswapV3Pool} from "../lib/v3-core/contracts/interfaces/IUniswapV3Pool
 // Interfaces - Sushiswap v3
 // (Sushiswap v3 uses the same interfaces as Uniswap v3)
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
+
+// Interfaces - Camelot v2
+import {ICamelotFactory}  from "../lib/camelot-v2-core/contracts/interfaces/ICamelotFactory.sol";
+import {ICamelotRouter} from "../lib/camelot-v2-periphery/contracts/interfaces/ICamelotRouter.sol";
+import {ICamelotPair} from "../lib/camelot-v2-core/contracts/interfaces/ICamelotPair.sol";
 
 contract AtomicArbitragerTester is Test {
     // Addresses
@@ -67,6 +73,11 @@ contract AtomicArbitragerTester is Test {
     address constant SUSHISWAP_V3_POSITION_DESCRIPTOR = 0x1C4369df5732ccF317fef479B26A56e176B18ABb;
     address constant SUSHISWAP_V3_ROUTER = 0x2E6cd2d30aa43f40aa81619ff4b6E0a41479B13F;
     address sushiswapV3WETHUSDTPair;
+
+    // Addresses - Camelot V2
+    address constant CAMELOT_V2_FACTORY = 0x6EcCab422D763aC031210895C81787E87B43A652;
+    address constant CAMELOT_V2_ROUTER = 0xc873fEcbd354f5A56E00E710B90EF4201db2448d;
+    address camelotV2WETHUSDTPair;
 
     // Necessary variables
     AtomicArbitrage atomicArbitrager;
@@ -228,6 +239,25 @@ contract AtomicArbitragerTester is Test {
         _;
     }
 
+    // Modifiers - Camelot v2 pool deployment
+    modifier WithDeployedCamelotV2Pool() {
+        vm.deal(address(this), 10 ether);
+        // Ensure we have non-zero USDT explicitly for the first mint
+        uint256 usdtAmount = 10_000 * 10 ** 6; // 10k USDT with 6 decimals
+        USDT.mint(address(this), usdtAmount);
+        USDT.approve(CAMELOT_V2_ROUTER, type(uint256).max);
+        ICamelotRouter(CAMELOT_V2_ROUTER).addLiquidityETH{value: 10 ether}(
+            address(USDT),
+            usdtAmount,
+            0,
+            0,
+            address(this),
+            block.timestamp + 1000
+        );
+        camelotV2WETHUSDTPair = ICamelotFactory(CAMELOT_V2_FACTORY).getPair(USDT_MAINNET, WETH_MAINNET);
+        _;
+    }
+
     function setUp() public {
         // Deploy tokens
         // WETH
@@ -248,13 +278,15 @@ contract AtomicArbitragerTester is Test {
 
         // Deploy exchanges on anvil
         UniswapV2Deployer uniswapV2Deployer = new UniswapV2Deployer();
-        UniswapV3Deployer uniswapV3Deployer = new UniswapV3Deployer();
-        SushiswapV2Deployer sushiswapV2Deployer = new SushiswapV2Deployer();
-        SushiswapV3Deployer sushiswapV3Deployer = new SushiswapV3Deployer();
         uniswapV2Deployer.run();        
+        UniswapV3Deployer uniswapV3Deployer = new UniswapV3Deployer();
         uniswapV3Deployer.run();
+        SushiswapV2Deployer sushiswapV2Deployer = new SushiswapV2Deployer();
         sushiswapV2Deployer.run();
+        SushiswapV3Deployer sushiswapV3Deployer = new SushiswapV3Deployer();
         sushiswapV3Deployer.run();
+        CamelotV2Deployer camelotV2Deployer = new CamelotV2Deployer();
+        camelotV2Deployer.run();
 
         // Deploy Arbitrager by impersonating TESTER_ADDRESS
         vm.startPrank(TESTER_ADDRESS);
@@ -263,7 +295,8 @@ contract AtomicArbitragerTester is Test {
             address(address(UNISWAP_V2_ROUTER02)),    // UniswapV2Router02    address
             address(address(UNISWAP_V3_ROUTER)),      // UniswapV3Router02    address
             address(address(SUSHISWAP_V2_ROUTER02)),  // SushiswapV2Router02  address
-            address(address(SUSHISWAP_V3_ROUTER))     // SushiswapV3Router    address
+            address(address(SUSHISWAP_V3_ROUTER)),    // SushiswapV3Router    address
+            address(address(CAMELOT_V2_ROUTER))       // CamelotV2Router      address
         );
         vm.stopPrank();
     }
@@ -336,7 +369,6 @@ contract AtomicArbitragerTester is Test {
         vm.stopPrank();
     }
 
-
     function test_MakeASingleSwapOnSushiswapV2() WithDeployedSushiswapV2Pool public {
         console.log("Sushiswap v2 WETH/USDT pool address:", sushiswapV2WETHUSDTPair);
         vm.startPrank(TESTER_ADDRESS);
@@ -384,11 +416,36 @@ contract AtomicArbitragerTester is Test {
         console.log("USDT balance after swap:", USDT.balanceOf(address(atomicArbitrager)));
         vm.stopPrank();
     }
+
+    function test_MakeASingleSwapOnCamelotV2() WithDeployedCamelotV2Pool public {
+        console.log("Camelot v2 WETH/USDT pool address:", camelotV2WETHUSDTPair);
+        vm.startPrank(TESTER_ADDRESS);
+        vm.deal(TESTER_ADDRESS, 10 ether);
+        // Wrap 1 ETH to WETH
+        atomicArbitrager._wrapETH{value: 1 ether}(1 ether);
+        assertEq(WETH.balanceOf(address(atomicArbitrager)), 1 ether);
+
+        // Make swap WETH -> USDT
+        AtomicArbitrage.SwapParams memory swapParams = AtomicArbitrage.SwapParams({
+            tokenIn: WETH_MAINNET,
+            tokenOut: USDT_MAINNET,
+            amountIn: 1 ether,
+            recipient: address(atomicArbitrager),
+            deadline: block.timestamp + 300,
+            extra: abi.encode()
+        });
+
+        atomicArbitrager._swapCamelotV2(swapParams);
+        assert(0 < USDT.balanceOf(address(atomicArbitrager)));
+        vm.stopPrank();
+    }
+
     function test_makeSwap() public 
         WithDeployedUniswapV2Pool 
         WithDeployedUniswapV3Pool 
         WithDeployedSushiswapV2Pool
         WithDeployedSushiswapV3Pool
+        WithDeployedCamelotV2Pool
     {
         // Uniswap v2
         vm.startPrank(TESTER_ADDRESS);
@@ -461,5 +518,24 @@ contract AtomicArbitragerTester is Test {
         );
         assert(0 < USDT.balanceOf(address(atomicArbitrager)));
         vm.stopPrank();
+
+        // Camelot v2
+        vm.startPrank(TESTER_ADDRESS);
+        vm.deal(TESTER_ADDRESS, 10 ether);
+        atomicArbitrager._wrapETH{value: 1 ether}(1 ether);
+        atomicArbitrager._makeSwap(
+            4,
+            AtomicArbitrage.SwapParams({
+                tokenIn: WETH_MAINNET,
+                tokenOut: USDT_MAINNET,
+                amountIn: 1 ether,
+                recipient: address(atomicArbitrager),
+                deadline: block.timestamp + 300,
+                extra: abi.encode()
+            })
+        );
+        assert(0 < USDT.balanceOf(address(atomicArbitrager)));
+        vm.stopPrank();
+
     }
 }
