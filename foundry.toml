@@ -8,7 +8,8 @@ out = "out"
 via_ir = false  # Disable IR to compile 0.6/0.7 libs (OZ 3.x)
 libs = ["lib"]
 libraries = [
-    "@uniswap/v3-periphery/contracts/libraries/NFTDescriptor.sol:NFTDescriptor:0x42B24A95702b9986e82d421cC3568932790A48Ec"
+    "@uniswap/v3-periphery/contracts/libraries/NFTDescriptor.sol:NFTDescriptor:0x42B24A95702b9986e82d421cC3568932790A48Ec",
+    "./lib/sushiswap-v3-periphery/contracts/libraries/NFTDescriptor.sol:NFTDescriptor:0x67468E6c4418d58B1b41bc0A795BaCB824F70792",
 ]
 remappings = [
     "@uniswap/v2-core/contracts/=lib/v2-core/contracts/",
@@ -18,6 +19,7 @@ remappings = [
     "@uniswap/v3-periphery/=lib/v3-periphery/",
     "@uniswap/swap-router-contracts/=lib/swap-router-contracts/",
     "@uniV3_OZ/=lib/openzipplin_3.4.2_uniswapV3/",
+    "@sushiV3_OZ/=lib/openzipplin_3.4.2_uniswapV3/",
     "base64-sol/=lib/base64/",
     "@OZ_3.4.0/=lib/openzipplin_3.4.0_uniswapV3/",
     "@OZ_3.4.1/=lib/openzipplin_3.4.1_uniswapV3/",

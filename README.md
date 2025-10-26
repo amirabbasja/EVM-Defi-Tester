@@ -66,6 +66,8 @@ Also if faced with `Stack too deep` error, add the following to foundry config.t
 
 * Sushiswap V3 Position Manager: 0x2214A42d8e2A1d20635c2cb0664422c528B6A432
 
-* Sushiswap V3 Tick Lens: 0xFB70AD5a200d784E7901230E6875d91d5Fa6B68c
+* Sushiswap V3 Nonfungible Token Position Descriptor: 0x1C4369df5732ccF317fef479B26A56e176B18ABb
 
-* Sushiswap V3 SwapRouter02: 0x2E6cd2d30aa43f40aa81619ff4b6E0a41479B13F
+* Sushiswap V3 SwapRouter: 0x2E6cd2d30aa43f40aa81619ff4b6E0a41479B13F
+
+* Sushiswap V3 NFT Descriptor: 0x67468E6c4418d58B1b41bc0A795BaCB824F70792

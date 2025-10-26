@@ -6,6 +6,7 @@ import {IWETH9} from "./interfaces/IWETH9.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
 import {IUniswapV2Router02} from "./interfaces/IUniswapV2Router02.sol";
 import {ISwapRouter02} from "./interfaces/ISwapRouter02.sol";
+import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 
 contract AtomicArbitrage {
     /**
@@ -18,6 +19,9 @@ contract AtomicArbitrage {
     IWETH9 private immutable i_WETH9;
     IUniswapV2Router02 private immutable i_uniswapV2Router02;
     ISwapRouter02 private immutable i_uniswapV3Router;
+    IUniswapV2Router02 private immutable i_sushiswapV2Router02;
+    ISwapRouter private immutable i_sushiswapV3Router;
+
 
     struct SwapParams {
         address tokenIn;
@@ -46,12 +50,16 @@ contract AtomicArbitrage {
     constructor(
         address WETH9Address,
         address idx0_address, // UniswapV2Router02 address
-        address idx1_address // UniswapV3SwapRouter address
+        address idx1_address, // UniswapV3SwapRouter address
+        address idx2_address, // SushiswapV2Router02 address
+        address idx3_address // SushiswapV3SwapRouter address
     ) {
         i_owner = msg.sender;
         i_WETH9 = IWETH9(WETH9Address);
         i_uniswapV2Router02 = IUniswapV2Router02(idx0_address);
         i_uniswapV3Router = ISwapRouter02(idx1_address);
+        i_sushiswapV2Router02 = IUniswapV2Router02(idx2_address);
+        i_sushiswapV3Router = ISwapRouter(idx3_address);
     }
 
     /**
@@ -124,10 +132,14 @@ contract AtomicArbitrage {
      * @param p - The swap parameters. It is a struct with type SwapParams
      */
     function _makeSwap(uint idx, SwapParams memory p) public {
-        if (idx == 0) {
+        if        (idx == 0) {
             _swapUniswapV2(p);
         } else if (idx == 1) {
             _swapUniswapV3(p);
+        } else if (idx == 2) {
+            _swapSushiswapV2(p);
+        } else if (idx == 3) {
+            _swapSushiswapV3(p);
         } else {
             revert("ERR2");
         }
@@ -168,6 +180,44 @@ contract AtomicArbitrage {
         });
 
         i_uniswapV3Router.exactInputSingle(params);
+    }
+
+    function _swapSushiswapV2(SwapParams memory p) public {
+        // Ensiure allowance. TODO: Remove this?
+        _ensureAllowance(p.tokenIn, address(i_sushiswapV2Router02), p.amountIn);
+
+        address[] memory path;
+        path = new address[](2);
+        path[0] = p.tokenIn;
+        path[1] = p.tokenOut;
+        
+        i_sushiswapV2Router02.swapExactTokensForTokens(
+            p.amountIn,
+            0,
+            path,
+            p.recipient,
+            p.deadline
+        );
+    }
+
+    function _swapSushiswapV3(SwapParams memory p) public {
+        // Ensiure allowance. TODO: Remove this?
+        _ensureAllowance(p.tokenIn, address(i_sushiswapV3Router), p.amountIn);
+
+        (uint24 fee, uint160 sqrtPriceLimitX96, uint256 amountOutMinimum) = abi.decode(p.extra, (uint24, uint160, uint256));
+
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+            tokenIn: p.tokenIn,
+            tokenOut: p.tokenOut,
+            fee: fee,
+            recipient: p.recipient,
+            amountIn: p.amountIn,
+            deadline: p.deadline,
+            amountOutMinimum: amountOutMinimum,
+            sqrtPriceLimitX96: sqrtPriceLimitX96
+        });
+
+        i_sushiswapV3Router.exactInputSingle(params);
     }
 
     function _ensureAllowance(address token, address spender, uint256 amount) internal {
