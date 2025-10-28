@@ -8,6 +8,7 @@ import {IUniswapV2Router02} from "./interfaces/IUniswapV2Router02.sol";
 import {ISwapRouter02} from "./interfaces/ISwapRouter02.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 import {ICamelotRouter} from "./interfaces/ICamelotRouter.sol";
+import {ISwapRouterCamelotV3} from "./interfaces/ISwapRouterCamelotV3.sol";
 
 contract AtomicArbitrage {
     /**
@@ -23,6 +24,7 @@ contract AtomicArbitrage {
     IUniswapV2Router02 private immutable i_sushiswapV2Router02;
     ISwapRouter private immutable i_sushiswapV3Router;
     ICamelotRouter private immutable i_camelotRouter;
+    ISwapRouterCamelotV3 private immutable i_camelotV3Router;
 
 
     struct SwapParams {
@@ -55,7 +57,8 @@ contract AtomicArbitrage {
         address idx1_address, // UniswapV3SwapRouter address
         address idx2_address, // SushiswapV2Router02 address
         address idx3_address, // SushiswapV3SwapRouter address
-        address idx4_address // CamelotV2Router address
+        address idx4_address, // CamelotV2Router address
+        address idx5_address // CamelotV3SwapRouter address
     ) {
         i_owner = msg.sender;
         i_WETH9 = IWETH9(WETH9Address);
@@ -64,6 +67,7 @@ contract AtomicArbitrage {
         i_sushiswapV2Router02 = IUniswapV2Router02(idx2_address);
         i_sushiswapV3Router = ISwapRouter(idx3_address);
         i_camelotRouter = ICamelotRouter(idx4_address);
+        i_camelotV3Router = ISwapRouterCamelotV3(idx5_address);
     }
 
     /**
@@ -146,6 +150,8 @@ contract AtomicArbitrage {
             _swapSushiswapV3(p);
         } else if (idx == 4) {
             _swapCamelotV2(p);
+        } else if (idx == 5) {
+            _swapCamelotV3(p);
         } else {
             revert("ERR2");
         }
@@ -243,6 +249,25 @@ contract AtomicArbitrage {
             p.recipient,
             p.deadline
         );
+    }
+
+    function _swapCamelotV3(SwapParams memory p) public {
+        // Ensiure allowance. TODO: Remove this?
+        _ensureAllowance(p.tokenIn, address(i_camelotV3Router), p.amountIn);
+
+        (uint24 fee, uint160 limitSqrtPrice, uint256 amountOutMinimum) = abi.decode(p.extra, (uint24, uint160, uint256));
+
+        ISwapRouterCamelotV3.ExactInputSingleParams memory params = ISwapRouterCamelotV3.ExactInputSingleParams({
+            tokenIn: p.tokenIn,
+            tokenOut: p.tokenOut,
+            recipient: p.recipient,
+            amountIn: p.amountIn,
+            deadline: p.deadline,
+            amountOutMinimum: amountOutMinimum,
+            limitSqrtPrice: limitSqrtPrice
+        });
+
+        i_camelotV3Router.exactInputSingle(params);
     }
 
     function _ensureAllowance(address token, address spender, uint256 amount) internal {

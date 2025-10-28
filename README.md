@@ -43,6 +43,7 @@ Also if faced with `Stack too deep` error, add the following to foundry config.t
         git clone https://github.com/sushiswap/v3-core lib/sushiswap-v3-core
         git clone https://github.com/sushiswap/v3-periphery lib/sushiswap-v3-periphery
     ```  
+    Do what you did for uniswap v3 regarding replacing openzepplin. Replace `@openzeppline/` with `@sushiV3_OZ`.
 
 * Camelot V2: First download the main repo from github. Be sure to download the module to the directory `lib/camelot-v2-core` and `lib/camelot-v2-periphery`. Use the commands below:
 
@@ -57,6 +58,17 @@ Also if faced with `Stack too deep` error, add the following to foundry config.t
     ```bash
         git clone https://github.com/cryptoalgebra/AlgebraV1.9 lib/camelot-v3
     ```
+    Do what you did for uniswap v3 regarding replacing openzepplin. Replace `@openzeppline/` with `@camelotV3_OZ`.
+
+
+* Pancakeswap V2: First download the main repo from github. Be sure to download the module to the directory `lib/pancake-v2-core`. Use the command below:  
+
+    ```bash
+        git clone https://github.com/pancakeswap/pancake-smart-contracts.git lib/pancakeswap-v2-core
+        git clone https://github.com/pancakeswap/pancake-swap-periphery.git lib/pancakeswap-v2-periphery
+    ```  
+    Also, change core files with the one provided in `libChanges/v2-periphry`.
+
 
 ## Addresses used
 
@@ -105,3 +117,15 @@ Also if faced with `Stack too deep` error, add the following to foundry config.t
 * Camelot V3 SwapRouter: 0x1F721E2E82F6676FCE4eA07A5958cF098D339e18 *(Arbitrum)*
 
 * Camelot V3 Algebra Interface Multicall: AlgebraInterfaceMulticall *(Arbitrum)*
+
+* Pancakeswap V2 Pancake Factory: 0x1097053Fd2ea711dad45caCcc45EfF7548fCB362
+
+* Pancakeswap V2 Pancake Router: 0xEfF92A263d31888d860bD50809A8D171709b7b1c
+
+* Pancakeswap V3 Factory: 0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865
+
+* Pancakeswap V3 Pool deployer: 0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9
+
+* Pancakeswap V3 Swap Router V3: 0x1b81D678ffb9C0263b24A97847620C99d213eB14
+
+* Pancakeswap V3 Nonfungible Position Manager: 0x46A15B0b27311cedF172AB29E4f4766fbE7F4364

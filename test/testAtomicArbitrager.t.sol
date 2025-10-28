@@ -11,6 +11,7 @@ import {UniswapV3Deployer} from "../script/UniswapV3Deployer.s.sol";
 import {SushiswapV2Deployer} from "../script/SushiswapV2Deployer.s.sol";
 import {SushiswapV3Deployer} from "../script/SushiswapV3Deployer.s.sol";
 import {CamelotV2Deployer} from "../script/CamelotV2Deployer.s.sol";
+import {CamelotV3Deployer} from "../script/CamelotV3Deployer.s.sol";
 
 
 // Interfaces
@@ -42,6 +43,12 @@ import {ICamelotFactory}  from "../lib/camelot-v2-core/contracts/interfaces/ICam
 import {ICamelotRouter} from "../lib/camelot-v2-periphery/contracts/interfaces/ICamelotRouter.sol";
 import {ICamelotPair} from "../lib/camelot-v2-core/contracts/interfaces/ICamelotPair.sol";
 
+// Interfaces - Camelot v3
+import {IAlgebraFactoryCamelotV3} from "./interfaces/IAlgebraFactoryCamelotV3.sol";
+import {IAlgebraPoolCamelotV3} from "./interfaces/IAlgebraPoolCamelotV3.sol";
+import {INonfungiblePositionManagerCamelotV3} from "./interfaces/INonfungiblePositionManagerCamelotV3.sol";
+import {ISwapRouterCamelotV3} from "./interfaces/ISwapRouterCamelotV3.sol";
+
 contract AtomicArbitragerTester is Test {
     // Addresses
     // Addresses - General
@@ -70,7 +77,6 @@ contract AtomicArbitragerTester is Test {
     // Addresses - Sushiswap v3
     address constant SUSHISWAP_V3_FACTORY = 0xbACEB8eC6b9355Dfc0269C18bac9d6E2Bdc29C4F;
     address constant SUSHISWAP_V3_POSITION_MANAGER = 0x2214A42d8e2A1d20635c2cb0664422c528B6A432;
-    address constant SUSHISWAP_V3_POSITION_DESCRIPTOR = 0x1C4369df5732ccF317fef479B26A56e176B18ABb;
     address constant SUSHISWAP_V3_ROUTER = 0x2E6cd2d30aa43f40aa81619ff4b6E0a41479B13F;
     address sushiswapV3WETHUSDTPair;
 
@@ -78,6 +84,12 @@ contract AtomicArbitragerTester is Test {
     address constant CAMELOT_V2_FACTORY = 0x6EcCab422D763aC031210895C81787E87B43A652;
     address constant CAMELOT_V2_ROUTER = 0xc873fEcbd354f5A56E00E710B90EF4201db2448d;
     address camelotV2WETHUSDTPair;
+
+    // Addresses - Camelot V2
+    address constant CAMELOT_V3_FACTORY = 0x1a3c9B1d2F0529D97f2afC5136Cc23e58f1FD35B;
+    address constant CAMELOT_V3_POSITION_MANAGER = 0x00c7f3082833e796A5b3e4Bd59f6642FF44DCD15;
+    address constant CAMELOT_V3_ROUTER = 0x1F721E2E82F6676FCE4eA07A5958cF098D339e18;
+    address camelotV3WETHUSDTPair;
 
     // Necessary variables
     AtomicArbitrage atomicArbitrager;
@@ -258,6 +270,61 @@ contract AtomicArbitragerTester is Test {
         _;
     }
 
+    // Modifiers - Camelot v3 pool deployment
+    modifier WithDeployedCamelotV3Pool() {
+        IAlgebraFactoryCamelotV3 camelotV3Factory = IAlgebraFactoryCamelotV3(CAMELOT_V3_FACTORY);
+        INonfungiblePositionManagerCamelotV3 camelotV3PositionManager = INonfungiblePositionManagerCamelotV3(CAMELOT_V3_POSITION_MANAGER);
+
+        // Ensure we have ETH to wrap as WETH
+        vm.deal(address(this), 100 ether);
+
+        // Create and initialize the WETH/USDT pool at 0.05% fee via NPM
+        uint24 fee = 500;
+        uint160 sqrtPriceX96 = uint160(2**96);
+        address pool = camelotV3PositionManager.createAndInitializePoolIfNecessary(
+            WETH_MAINNET,
+            USDT_MAINNET,
+            sqrtPriceX96
+        );
+        assert(pool != address(0));
+        assert(address(pool).code.length > 0);
+        // Assert factory mapping agrees with the created pool
+        assertEq(camelotV3Factory.poolByPair(WETH_MAINNET, USDT_MAINNET), pool);
+
+        // Prepare tokens: wrap ETH to WETH and mint USDT to this contract
+        uint256 amount0Desired = 1 ether;
+        uint256 amount1Desired = 1 ether;
+        WETH.deposit{value: amount0Desired}();
+        USDT.mint(address(this), amount1Desired);
+
+        // Approve position manager to pull tokens
+        WETH.approve(address(camelotV3PositionManager), type(uint256).max);
+        USDT.approve(address(camelotV3PositionManager), type(uint256).max);
+
+        // Set a wide tick range based on pool tick spacing (Algebra)
+        int24 spacing = IAlgebraPoolCamelotV3(pool).tickSpacing();
+        int24 tickLower = -spacing * 100;
+        int24 tickUpper = spacing * 100;
+
+        // Mint the position
+        INonfungiblePositionManagerCamelotV3.MintParams memory params = INonfungiblePositionManagerCamelotV3.MintParams({
+            token0: WETH_MAINNET,
+            token1: USDT_MAINNET,
+            tickLower: tickLower,
+            tickUpper: tickUpper,
+            amount0Desired: amount0Desired,
+            amount1Desired: amount1Desired,
+            amount0Min: 0,
+            amount1Min: 0,
+            recipient: address(this),
+            deadline: block.timestamp + 1000
+        });
+
+        (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = camelotV3PositionManager.mint(params);
+        camelotV3WETHUSDTPair = pool;
+        _;
+    }
+
     function setUp() public {
         // Deploy tokens
         // WETH
@@ -296,7 +363,8 @@ contract AtomicArbitragerTester is Test {
             address(address(UNISWAP_V3_ROUTER)),      // UniswapV3Router02    address
             address(address(SUSHISWAP_V2_ROUTER02)),  // SushiswapV2Router02  address
             address(address(SUSHISWAP_V3_ROUTER)),    // SushiswapV3Router    address
-            address(address(CAMELOT_V2_ROUTER))       // CamelotV2Router      address
+            address(address(CAMELOT_V2_ROUTER)),       // CamelotV2Router      address
+            address(address(CAMELOT_V3_ROUTER))        // CamelotV3Router      address
         );
         vm.stopPrank();
     }
