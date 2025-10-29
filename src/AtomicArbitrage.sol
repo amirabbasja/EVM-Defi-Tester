@@ -56,6 +56,18 @@ contract AtomicArbitrage {
         require(msg.sender == i_owner, "ERR0");
     }
 
+    // Address validation helpers
+    function _isContract(address account) internal view returns (bool) {
+        uint256 size;
+        assembly { size := extcodesize(account) }
+        return size > 0;
+    }
+
+    function _requireContract(address account) internal view {
+        require(account != address(0), "ERR4");  // zero address
+        require(_isContract(account), "ERR5");   // not a deployed contract
+    }
+
     constructor(
         address WETH9Address,
         address idx0_address, // UniswapV2Router02 address
@@ -68,6 +80,18 @@ contract AtomicArbitrage {
         address idx7_address  // PancakeswapV3SwapRouter address
     ) {
         i_owner = msg.sender;
+
+        // Validate inputs: non-zero and deployed contracts
+        _requireContract(WETH9Address);
+        _requireContract(idx0_address);
+        _requireContract(idx1_address);
+        _requireContract(idx2_address);
+        _requireContract(idx3_address);
+        _requireContract(idx4_address);
+        _requireContract(idx5_address);
+        _requireContract(idx6_address);
+        _requireContract(idx7_address);
+
         i_WETH9 = IWETH9(WETH9Address);
         i_uniswapV2Router02 = IUniswapV2Router02(idx0_address);
         i_uniswapV3Router = ISwapRouter02(idx1_address);

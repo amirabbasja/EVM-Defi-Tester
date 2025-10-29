@@ -2,9 +2,13 @@
 
 This repo is using foundry and currently supports following DEXs:
 
-* Uniswap V2
+* Uniswap V2 & V3
 
-* Uniswap V3
+* Sushiswap V2 & V3
+
+* Camelot V2 & V3
+
+* Pancakeswap V3 & V3
 
 ---
 
@@ -146,4 +150,10 @@ Also if faced with `Stack too deep` error, add the following to foundry config.t
 
 * Pancakeswap V3 Swap Router: 0x1b81D678ffb9C0263b24A97847620C99d213eB14
 
-* Pancakeswap V3 Nonfungible Position Manager: 0x46A15B0b27311cedF172AB29E4f4766fbE7F4364
+* Pancakeswap V3 Nonfungible Position Manager: 0x46A15B0b27311cedF172AB29E4f4766fbE7F4364  
+
+---
+
+## TOOD
+
+* The `AtomicArbitrage.sol` can not accept more than 16 arguments (Per solidity requirements). Change it to accept a struct instead.
