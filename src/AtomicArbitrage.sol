@@ -9,6 +9,8 @@ import {ISwapRouter02} from "./interfaces/ISwapRouter02.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 import {ICamelotRouter} from "./interfaces/ICamelotRouter.sol";
 import {ISwapRouterCamelotV3} from "./interfaces/ISwapRouterCamelotV3.sol";
+import{IPancakeRouter01PancakeswapV2} from "./interfaces/IPancakeRouter01PancakeswapV2.sol";
+import{ISwapRouterPanckeswapV3} from "./interfaces/ISwapRouterPanckeswapV3.sol";
 
 contract AtomicArbitrage {
     /**
@@ -25,6 +27,9 @@ contract AtomicArbitrage {
     ISwapRouter private immutable i_sushiswapV3Router;
     ICamelotRouter private immutable i_camelotRouter;
     ISwapRouterCamelotV3 private immutable i_camelotV3Router;
+    IPancakeRouter01PancakeswapV2 private immutable i_pancakeswapV2Router02;
+    ISwapRouterPanckeswapV3 private immutable i_pancakeswapV3Router;
+
 
 
     struct SwapParams {
@@ -58,7 +63,9 @@ contract AtomicArbitrage {
         address idx2_address, // SushiswapV2Router02 address
         address idx3_address, // SushiswapV3SwapRouter address
         address idx4_address, // CamelotV2Router address
-        address idx5_address // CamelotV3SwapRouter address
+        address idx5_address, // CamelotV3SwapRouter address
+        address idx6_address, // PancakeswapV2Router02 address
+        address idx7_address  // PancakeswapV3SwapRouter address
     ) {
         i_owner = msg.sender;
         i_WETH9 = IWETH9(WETH9Address);
@@ -68,6 +75,8 @@ contract AtomicArbitrage {
         i_sushiswapV3Router = ISwapRouter(idx3_address);
         i_camelotRouter = ICamelotRouter(idx4_address);
         i_camelotV3Router = ISwapRouterCamelotV3(idx5_address);
+        i_pancakeswapV2Router02 = IPancakeRouter01PancakeswapV2(idx6_address);
+        i_pancakeswapV3Router = ISwapRouterPanckeswapV3(idx7_address);
     }
 
     /**
@@ -152,6 +161,10 @@ contract AtomicArbitrage {
             _swapCamelotV2(p);
         } else if (idx == 5) {
             _swapCamelotV3(p);
+        } else if (idx == 6) {
+            _swapPancakeswapV2(p);
+        } else if (idx == 7) {
+            _swapPancakeswapV3(p);
         } else {
             revert("ERR2");
         }
@@ -255,7 +268,7 @@ contract AtomicArbitrage {
         // Ensiure allowance. TODO: Remove this?
         _ensureAllowance(p.tokenIn, address(i_camelotV3Router), p.amountIn);
 
-        (uint24 fee, uint160 limitSqrtPrice, uint256 amountOutMinimum) = abi.decode(p.extra, (uint24, uint160, uint256));
+        (uint160 limitSqrtPrice, uint256 amountOutMinimum) = abi.decode(p.extra, (uint160, uint256));
 
         ISwapRouterCamelotV3.ExactInputSingleParams memory params = ISwapRouterCamelotV3.ExactInputSingleParams({
             tokenIn: p.tokenIn,
@@ -268,6 +281,44 @@ contract AtomicArbitrage {
         });
 
         i_camelotV3Router.exactInputSingle(params);
+    }
+
+    function _swapPancakeswapV2(SwapParams memory p) public {
+        // Ensiure allowance. TODO: Remove this?
+        _ensureAllowance(p.tokenIn, address(i_pancakeswapV2Router02), p.amountIn);
+
+        address[] memory path;
+        path = new address[](2);
+        path[0] = p.tokenIn;
+        path[1] = p.tokenOut;
+        
+        i_pancakeswapV2Router02.swapExactTokensForTokens(
+            p.amountIn,
+            0,
+            path,
+            p.recipient,
+            p.deadline
+        );
+    }
+
+    function _swapPancakeswapV3(SwapParams memory p) public {
+        // Ensiure allowance. TODO: Remove this?
+        _ensureAllowance(p.tokenIn, address(i_pancakeswapV3Router), p.amountIn);
+
+        (uint24 fee, uint160 sqrtPriceLimitX96, uint256 amountOutMinimum) = abi.decode(p.extra, (uint24, uint160, uint256));
+
+        ISwapRouterPanckeswapV3.ExactInputSingleParams memory params = ISwapRouterPanckeswapV3.ExactInputSingleParams({
+            tokenIn: p.tokenIn,
+            tokenOut: p.tokenOut,
+            fee: fee,
+            recipient: p.recipient,
+            amountIn: p.amountIn,
+            deadline: p.deadline,
+            amountOutMinimum: amountOutMinimum,
+            sqrtPriceLimitX96: sqrtPriceLimitX96
+        });
+
+        i_pancakeswapV3Router.exactInputSingle(params);
     }
 
     function _ensureAllowance(address token, address spender, uint256 amount) internal {

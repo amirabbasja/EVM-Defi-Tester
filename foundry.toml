@@ -10,7 +10,8 @@ libs = ["lib"]
 libraries = [
     "@uniswap/v3-periphery/contracts/libraries/NFTDescriptor.sol:NFTDescriptor:0x42B24A95702b9986e82d421cC3568932790A48Ec",
     "./lib/sushiswap-v3-periphery/contracts/libraries/NFTDescriptor.sol:NFTDescriptor:0x67468E6c4418d58B1b41bc0A795BaCB824F70792",
-    "./lib/camelot-v3/src/periphery/contracts/libraries/NFTDescriptor.sol:NFTDescriptor:0xA914d0665DD9D846c973cA7C2Cb735F5D98C7d91"
+    "./lib/camelot-v3/src/periphery/contracts/libraries/NFTDescriptor.sol:NFTDescriptor:0xA914d0665DD9D846c973cA7C2Cb735F5D98C7d91",
+    "lib/pancakeswap-v3/projects/v3-periphery/contracts/libraries/NFTDescriptor.sol:NFTDescriptor:0x02e62A6531043F3ED8cBB4fA03dD6ED5e7255511"
 ]
 remappings = [
     "@uniswap/v2-core/contracts/=lib/v2-core/contracts/",
@@ -22,8 +23,11 @@ remappings = [
     "@uniV3_OZ/=lib/openzipplin_3.4.2_uniswapV3/",
     "@sushiV3_OZ/=lib/openzipplin_3.4.2_uniswapV3/",
     "@camelotV3_OZ/=lib/openzipplin_3.4.2_uniswapV3/",
+    "@pancakeV3_OZ/=lib/openzipplin_3.4.2_uniswapV3/",
     "camelot-ammv2-core/=lib/camelot-v2-core/",
     "@cryptoalgebra/v1.9-core/=lib/camelot-v3/src/core/",
+    "@pancakeswap-v2-core/=lib/pancakeswap-v2-core/projects/exchange-protocol/",
+    "@pancakeswap/=lib/pancakeswap-v3/projects/",
     "base64-sol/=lib/base64/",
     "@OZ_3.4.0/=lib/openzipplin_3.4.0_uniswapV3/",
     "@OZ_3.4.1/=lib/openzipplin_3.4.1_uniswapV3/",

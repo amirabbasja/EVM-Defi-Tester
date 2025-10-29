@@ -17,7 +17,15 @@ Also, add files in the directory `./libChanges` to the foundry project. They con
 
 ### Points about deployments of each DEX code:
 
-* **General**: Added minimal interfaces for tests in the `.test/interfaces` directory. Therefore avoiding version and dependancies errors.
+* **General**: Added minimal interfaces for tests in the `.test/interfaces` directory. Therefore avoiding version and dependancies errors. Furthermore, all V3 exchanges need `NFTDescriptor.sol` to be compiled and attached to the compiler. We do this by adding the following to the foundry `foundry.toml` (*The contract addresses are not important, but their existence is mandatory, as far as i know*):
+    ```
+        libraries = [
+            "@uniswap/v3-periphery/contracts/libraries/NFTDescriptor.sol:NFTDescriptor:0x42B24A95702b9986e82d421cC3568932790A48Ec",
+            "./lib/sushiswap-v3-periphery/contracts/libraries/NFTDescriptor.sol:NFTDescriptor:0x67468E6c4418d58B1b41bc0A795BaCB824F70792",
+            "./lib/camelot-v3/src/periphery/contracts/libraries/NFTDescriptor.sol:NFTDescriptor:0xA914d0665DD9D846c973cA7C2Cb735F5D98C7d91",
+            "lib/pancakeswap-v3/projects/v3-periphery/contracts/libraries/NFTDescriptor.sol:NFTDescriptor:0x02e62A6531043F3ED8cBB4fA03dD6ED5e7255511"
+        ]
+    ```
 
 * Uniswap v2: Change core files with the one provided in `libChanges/v2-periphry`
 
@@ -67,8 +75,18 @@ Also if faced with `Stack too deep` error, add the following to foundry config.t
         git clone https://github.com/pancakeswap/pancake-smart-contracts.git lib/pancakeswap-v2-core
         git clone https://github.com/pancakeswap/pancake-swap-periphery.git lib/pancakeswap-v2-periphery
     ```  
-    Also, change core files with the one provided in `libChanges/v2-periphry`.
+    Also, change core files with the one provided in `libChanges/pancakeswap-v2-periphry`. Furthermore, do the following replacements in pancakeswap-v2-periphery files (Remapping in the foundry isnt good enought, so we do it manually):
+    ```
+        @uniswap/v2-core/contracts/interfaces/IPancakeFactory.sol= => lib/pancakeswap-v2-core/projects/exchange-protocol/contracts/interfaces/IPancakeFactory.sol
+        @uniswap/v2-core/contracts/interfaces/IPancakePair.sol => lib/pancakeswap-v2-core/projects/exchange-protocol/contracts/interfaces/IPancakePair.sol
+    ```
 
+
+* Pancakeswap V3: First download the main repo from github. Be sure to download the module to the directory `lib/pancakeswap-v3`. Use the command below:  
+    ```bash
+        git clone https://github.com/pancakeswap/pancake-v3-contracts.git lib/pancakeswap-v3
+    ```
+    Also, change core files with the one provided in `libChanges/pancakeswap-v3`.
 
 ## Addresses used
 
@@ -126,6 +144,6 @@ Also if faced with `Stack too deep` error, add the following to foundry config.t
 
 * Pancakeswap V3 Pool deployer: 0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9
 
-* Pancakeswap V3 Swap Router V3: 0x1b81D678ffb9C0263b24A97847620C99d213eB14
+* Pancakeswap V3 Swap Router: 0x1b81D678ffb9C0263b24A97847620C99d213eB14
 
 * Pancakeswap V3 Nonfungible Position Manager: 0x46A15B0b27311cedF172AB29E4f4766fbE7F4364

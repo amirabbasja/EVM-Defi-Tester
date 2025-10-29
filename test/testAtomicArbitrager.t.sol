@@ -12,7 +12,8 @@ import {SushiswapV2Deployer} from "../script/SushiswapV2Deployer.s.sol";
 import {SushiswapV3Deployer} from "../script/SushiswapV3Deployer.s.sol";
 import {CamelotV2Deployer} from "../script/CamelotV2Deployer.s.sol";
 import {CamelotV3Deployer} from "../script/CamelotV3Deployer.s.sol";
-
+import {PancakeswapV2Deployer} from "../script/PancakeswapV2Deployer.s.sol";
+import {PancakeswapV3Deployer} from "../script/PancakeswapV3Deployer.s.sol";
 
 // Interfaces
 import {IMockWETH9} from "./interfaces/IMockWETH9.sol";
@@ -48,6 +49,16 @@ import {IAlgebraFactoryCamelotV3} from "./interfaces/IAlgebraFactoryCamelotV3.so
 import {IAlgebraPoolCamelotV3} from "./interfaces/IAlgebraPoolCamelotV3.sol";
 import {INonfungiblePositionManagerCamelotV3} from "./interfaces/INonfungiblePositionManagerCamelotV3.sol";
 import {ISwapRouterCamelotV3} from "./interfaces/ISwapRouterCamelotV3.sol";
+
+// Interfaces - Pancakeswap v2
+import {IPancakeFactoryPancakeswapV2} from "./interfaces/IPancakeFactoryPancakeswapV2.sol";
+import {IPancakeRouter01PancakeswapV2} from "./interfaces/IPancakeRouter01PancakeswapV2.sol";
+import {IPancakePairPancakeswapV2} from "./interfaces/IPancakePairPancakeswapV2.sol";
+
+// Interfaces - Pancakeswap v3
+import {IPancakeV3Factory} from "./interfaces/IPancakeV3Factory.sol";
+import {INonfungiblePositionManagerPancakeswapV3} from "./interfaces/INonfungiblePositionManagerPancakeswapV3.sol";
+import {ISwapRouterPanckeswapV3} from "./interfaces/ISwapRouterPanckeswapV3.sol";
 
 contract AtomicArbitragerTester is Test {
     // Addresses
@@ -85,11 +96,22 @@ contract AtomicArbitragerTester is Test {
     address constant CAMELOT_V2_ROUTER = 0xc873fEcbd354f5A56E00E710B90EF4201db2448d;
     address camelotV2WETHUSDTPair;
 
-    // Addresses - Camelot V2
+    // Addresses - Camelot V3
     address constant CAMELOT_V3_FACTORY = 0x1a3c9B1d2F0529D97f2afC5136Cc23e58f1FD35B;
     address constant CAMELOT_V3_POSITION_MANAGER = 0x00c7f3082833e796A5b3e4Bd59f6642FF44DCD15;
     address constant CAMELOT_V3_ROUTER = 0x1F721E2E82F6676FCE4eA07A5958cF098D339e18;
     address camelotV3WETHUSDTPair;
+
+    // Addresses - Pancakeswap V2
+    address constant PANCAKESWAP_V2_FACTORY = 0x1097053Fd2ea711dad45caCcc45EfF7548fCB362;
+    address constant PANCAKESWAP_V2_ROUTER = 0xEfF92A263d31888d860bD50809A8D171709b7b1c;
+    address pancakeswapV2WETHUSDTPair;
+
+    // Addresses - Pancakeswap V3
+    address constant PANCAKESWAP_V3_FACTORY = 0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865;
+    address constant PANCAKESWAP_V3_POSITION_MANAGER = 0x46A15B0b27311cedF172AB29E4f4766fbE7F4364;
+    address constant PANCAKESWAP_V3_ROUTER = 0x1b81D678ffb9C0263b24A97847620C99d213eB14;
+    address pancakeswapV3WETHUSDTPair;
 
     // Necessary variables
     AtomicArbitrage atomicArbitrager;
@@ -325,6 +347,82 @@ contract AtomicArbitragerTester is Test {
         _;
     }
 
+    // Modifiers - Pancakeswap v2 pool deployment
+    modifier WithDeployedPancakeswapV2Pool() {
+        vm.deal(address(this), 10 ether);
+        // Ensure we have non-zero USDT explicitly for the first mint
+        uint256 usdtAmount = 10_000 * 10 ** 6; // 10k USDT with 6 decimals
+        USDT.mint(address(this), usdtAmount);
+        USDT.approve(PANCAKESWAP_V2_ROUTER, type(uint256).max);
+        IPancakeRouter01PancakeswapV2(PANCAKESWAP_V2_ROUTER).addLiquidityETH{value: 10 ether}(
+            address(USDT),
+            usdtAmount,
+            0,
+            0,
+            address(this),
+            block.timestamp + 1000
+        );
+        pancakeswapV2WETHUSDTPair = IPancakeFactoryPancakeswapV2(PANCAKESWAP_V2_FACTORY).getPair(USDT_MAINNET, WETH_MAINNET);
+        _;
+    }
+
+    // Modifiers - Pancakeswap v3 pool deployment
+    modifier WithDeployedPancakeswapV3Pool() {
+        IPancakeV3Factory pancakeswapV3Factory = IPancakeV3Factory(PANCAKESWAP_V3_FACTORY);
+        INonfungiblePositionManagerPancakeswapV3 pancakeswapV3PositionManager = INonfungiblePositionManagerPancakeswapV3(PANCAKESWAP_V3_POSITION_MANAGER);
+
+        // Ensure we have ETH to wrap as WETH
+        vm.deal(address(this), 100 ether);
+
+        // Create and initialize the WETH/USDT pool at 0.05% fee via NPM
+        uint24 fee = 500;
+        uint160 sqrtPriceX96 = uint160(2**96);
+        address pool = pancakeswapV3PositionManager.createAndInitializePoolIfNecessary(
+            WETH_MAINNET,
+            USDT_MAINNET,
+            fee,
+            sqrtPriceX96
+        );
+        assert(pool != address(0));
+        assert(address(pool).code.length > 0);
+        // Assert factory mapping agrees with the created pool
+        assertEq(pancakeswapV3Factory.getPool(WETH_MAINNET, USDT_MAINNET, fee), pool);
+
+        // Prepare tokens: wrap ETH to WETH and mint USDT to this contract
+        uint256 amount0Desired = 1 ether;
+        uint256 amount1Desired = 1 ether;
+        WETH.deposit{value: amount0Desired}();
+        USDT.mint(address(this), amount1Desired);
+
+        // Approve position manager to pull tokens
+        WETH.approve(address(pancakeswapV3PositionManager), type(uint256).max);
+        USDT.approve(address(pancakeswapV3PositionManager), type(uint256).max);
+
+        // Set a wide tick range based on factory tick spacing
+        int24 spacing = pancakeswapV3Factory.feeAmountTickSpacing(fee);
+        int24 tickLower = -spacing * 100;
+        int24 tickUpper = spacing * 100;
+
+        // Mint the position
+        INonfungiblePositionManagerPancakeswapV3.MintParams memory params = INonfungiblePositionManagerPancakeswapV3.MintParams({
+            token0: WETH_MAINNET,
+            token1: USDT_MAINNET,
+            fee: fee,
+            tickLower: tickLower,
+            tickUpper: tickUpper,
+            amount0Desired: amount0Desired,
+            amount1Desired: amount1Desired,
+            amount0Min: 0,
+            amount1Min: 0,
+            recipient: address(this),
+            deadline: block.timestamp + 1000
+        });
+
+        (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) = pancakeswapV3PositionManager.mint(params);
+        pancakeswapV3WETHUSDTPair = pool;
+        _;
+    }
+
     function setUp() public {
         // Deploy tokens
         // WETH
@@ -354,17 +452,25 @@ contract AtomicArbitragerTester is Test {
         sushiswapV3Deployer.run();
         CamelotV2Deployer camelotV2Deployer = new CamelotV2Deployer();
         camelotV2Deployer.run();
+        CamelotV3Deployer camelotV3Deployer = new CamelotV3Deployer();
+        camelotV3Deployer.run();
+        PancakeswapV2Deployer pancakeswapV2Deployer = new PancakeswapV2Deployer();
+        pancakeswapV2Deployer.run();
+        PancakeswapV3Deployer pancakeswapV3Deployer = new PancakeswapV3Deployer();
+        pancakeswapV3Deployer.run();
 
         // Deploy Arbitrager by impersonating TESTER_ADDRESS
         vm.startPrank(TESTER_ADDRESS);
         atomicArbitrager = new AtomicArbitrage(
-            address(address(WETH)), // WETH9 address
-            address(address(UNISWAP_V2_ROUTER02)),    // UniswapV2Router02    address
-            address(address(UNISWAP_V3_ROUTER)),      // UniswapV3Router02    address
-            address(address(SUSHISWAP_V2_ROUTER02)),  // SushiswapV2Router02  address
-            address(address(SUSHISWAP_V3_ROUTER)),    // SushiswapV3Router    address
-            address(address(CAMELOT_V2_ROUTER)),       // CamelotV2Router      address
-            address(address(CAMELOT_V3_ROUTER))        // CamelotV3Router      address
+            address(address(WETH)),                    // WETH9 address
+            address(address(UNISWAP_V2_ROUTER02)),     // UniswapV2Router02   address
+            address(address(UNISWAP_V3_ROUTER)),       // UniswapV3Router02   address
+            address(address(SUSHISWAP_V2_ROUTER02)),   // SushiswapV2Router02 address
+            address(address(SUSHISWAP_V3_ROUTER)),     // SushiswapV3Router   address
+            address(address(CAMELOT_V2_ROUTER)),       // CamelotV2Router     address
+            address(address(CAMELOT_V3_ROUTER)),       // CamelotV3Router     address
+            address(address(PANCAKESWAP_V2_ROUTER)),   // PancakeswapV2Router address
+            address(address(PANCAKESWAP_V3_ROUTER))    // PancakeswapV3Router address
         );
         vm.stopPrank();
     }
@@ -508,12 +614,89 @@ contract AtomicArbitragerTester is Test {
         vm.stopPrank();
     }
 
+    function test_MakeASingleSwapOnCamelotV3() WithDeployedCamelotV3Pool public {
+        console.log("Camelot v3 WETH/USDT pool address:", camelotV3WETHUSDTPair);
+        
+        vm.startPrank(TESTER_ADDRESS);
+        vm.deal(TESTER_ADDRESS, 10 ether);
+        // Wrap 1 ETH to WETH
+        atomicArbitrager._wrapETH{value: 1 ether}(1 ether);
+        assertEq(WETH.balanceOf(address(atomicArbitrager)), 1 ether);
+
+        // Make swap WETH -> USDT
+        AtomicArbitrage.SwapParams memory swapParams = AtomicArbitrage.SwapParams({
+            tokenIn: WETH_MAINNET,
+            tokenOut: USDT_MAINNET,
+            amountIn: 1 ether,
+            recipient: address(atomicArbitrager),
+            deadline: block.timestamp + 300,
+            extra: abi.encode(0 ,0) // TODO: Made the fee fixed to 500. Make it modular later
+        });
+
+        atomicArbitrager._swapCamelotV3(swapParams);
+        assert(0 < USDT.balanceOf(address(atomicArbitrager)));
+        console.log("USDT balance after swap:", USDT.balanceOf(address(atomicArbitrager)));
+        vm.stopPrank();
+    }
+
+    function test_MakeASingleSwapOnPancakeswapV2() WithDeployedPancakeswapV2Pool public {
+        console.log("Pancakeswap v2 WETH/USDT pool address:", pancakeswapV2WETHUSDTPair);
+        vm.startPrank(TESTER_ADDRESS);
+        vm.deal(TESTER_ADDRESS, 10 ether);
+        // Wrap 1 ETH to WETH
+        atomicArbitrager._wrapETH{value: 1 ether}(1 ether);
+        assertEq(WETH.balanceOf(address(atomicArbitrager)), 1 ether);
+
+        // Make swap WETH -> USDT
+        AtomicArbitrage.SwapParams memory swapParams = AtomicArbitrage.SwapParams({
+            tokenIn: WETH_MAINNET,
+            tokenOut: USDT_MAINNET,
+            amountIn: 1 ether,
+            recipient: address(atomicArbitrager),
+            deadline: block.timestamp + 300,
+            extra: abi.encode()
+        });
+
+        atomicArbitrager._swapPancakeswapV2(swapParams);
+        assert(0 < USDT.balanceOf(address(atomicArbitrager)));
+        vm.stopPrank();
+    }
+
+    function test_MakeASingleSwapOnPancakeswapV3() WithDeployedPancakeswapV3Pool public {
+        console.log("Pancakeswap v3 WETH/USDT pool address:", pancakeswapV3WETHUSDTPair);
+        
+        vm.startPrank(TESTER_ADDRESS);
+        vm.deal(TESTER_ADDRESS, 10 ether);
+        // Wrap 1 ETH to WETH
+        atomicArbitrager._wrapETH{value: 1 ether}(1 ether);
+        assertEq(WETH.balanceOf(address(atomicArbitrager)), 1 ether);
+
+        // Make swap WETH -> USDT
+        AtomicArbitrage.SwapParams memory swapParams = AtomicArbitrage.SwapParams({
+            tokenIn: WETH_MAINNET,
+            tokenOut: USDT_MAINNET,
+            amountIn: 1 ether,
+            recipient: address(atomicArbitrager),
+            deadline: block.timestamp + 300,
+            extra: abi.encode(500 ,0 ,0) // TODO: Made the fee fixed to 500. Make it modular later
+        });
+
+        atomicArbitrager._swapPancakeswapV3(swapParams);
+        assert(0 < USDT.balanceOf(address(atomicArbitrager)));
+        console.log("USDT balance after swap:", USDT.balanceOf(address(atomicArbitrager)));
+        vm.stopPrank();
+    }
+
     function test_makeSwap() public 
         WithDeployedUniswapV2Pool 
         WithDeployedUniswapV3Pool 
         WithDeployedSushiswapV2Pool
         WithDeployedSushiswapV3Pool
         WithDeployedCamelotV2Pool
+        WithDeployedCamelotV3Pool
+        WithDeployedCamelotV3Pool
+        WithDeployedPancakeswapV2Pool
+        WithDeployedPancakeswapV3Pool
     {
         // Uniswap v2
         vm.startPrank(TESTER_ADDRESS);
@@ -605,5 +788,59 @@ contract AtomicArbitragerTester is Test {
         assert(0 < USDT.balanceOf(address(atomicArbitrager)));
         vm.stopPrank();
 
+        // Camelot v3
+        vm.startPrank(TESTER_ADDRESS);
+        vm.deal(TESTER_ADDRESS, 10 ether);
+        atomicArbitrager._wrapETH{value: 1 ether}(1 ether);
+        atomicArbitrager._makeSwap(
+            5,
+            AtomicArbitrage.SwapParams({
+                tokenIn: WETH_MAINNET,
+                tokenOut: USDT_MAINNET,
+                amountIn: 1 ether,
+                recipient: address(atomicArbitrager),
+                deadline: block.timestamp + 300,
+                extra: abi.encode(0, 0)
+            })
+        );
+        assert(0 < USDT.balanceOf(address(atomicArbitrager)));
+        vm.stopPrank();
+
+
+        // Pancakeswap v2
+        vm.startPrank(TESTER_ADDRESS);
+        vm.deal(TESTER_ADDRESS, 10 ether);
+        atomicArbitrager._wrapETH{value: 1 ether}(1 ether);
+        atomicArbitrager._makeSwap(
+            6,
+            AtomicArbitrage.SwapParams({
+                tokenIn: WETH_MAINNET,
+                tokenOut: USDT_MAINNET,
+                amountIn: 1 ether,
+                recipient: address(atomicArbitrager),
+                deadline: block.timestamp + 300,
+                extra: abi.encode()
+            })
+        );
+        assert(0 < USDT.balanceOf(address(atomicArbitrager)));
+        vm.stopPrank();
+
+        // Pancakeswap v3        
+        vm.startPrank(TESTER_ADDRESS);
+        vm.deal(TESTER_ADDRESS, 10 ether);
+        atomicArbitrager._wrapETH{value: 1 ether}(1 ether);
+        atomicArbitrager._makeSwap(
+            7,
+            AtomicArbitrage.SwapParams({
+                tokenIn: WETH_MAINNET,
+                tokenOut: USDT_MAINNET,
+                amountIn: 1 ether,
+                recipient: address(atomicArbitrager),
+                deadline: block.timestamp + 300,
+                extra: abi.encode(500 ,0 ,0)
+            })
+        );
+        assert(0 < USDT.balanceOf(address(atomicArbitrager)));
+        vm.stopPrank();
     }
 }
