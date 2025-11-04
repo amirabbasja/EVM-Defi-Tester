@@ -192,10 +192,17 @@ contract UniswapV3Tester is Test {
             amountOutMinimum: 0,
             sqrtPriceLimitX96: 0
         });
-        uniV3SwapRouter02.exactInputSingle(params);
+        uint256 amountOut = uniV3SwapRouter02.exactInputSingle(params);
+        console.log(amountOut);
         vm.stopPrank();
         
         console.log("WETH balance after swap: ", WETH.balanceOf(address(testAddr)));
         console.log("USDT balance after swap: ", USDT.balanceOf(address(testAddr)));
+    }
+
+    function _logUintArray(uint256[] memory arr) internal view {
+        for (uint256 i = 0; i < arr.length; i++) {
+            console.log("[%s] = %s", i, arr[i]);
+        }
     }
 }

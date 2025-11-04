@@ -109,7 +109,7 @@ contract UniswapV2Tester is Test {
         address[] memory path = new address[](2);
         path[0] = WETH_MAINNET;
         path[1] = address(newToken);
-        IUniswapV2Router01(address(uniV2Router02)).swapExactETHForTokens{value: 1 ether}(
+        uint[] memory amountsOut = IUniswapV2Router01(address(uniV2Router02)).swapExactETHForTokens{value: 2 ether}(
             0,
             path,
             address(swapper),
@@ -120,6 +120,12 @@ contract UniswapV2Tester is Test {
         uint256 walletBlanaceAfter = newToken.balanceOf(swapper);
 
         assert(walletBlanaceBefore < walletBlanaceAfter);
+    }
+
+    function _logUintArray(uint256[] memory arr) internal view {
+        for (uint256 i = 0; i < arr.length; i++) {
+            console.log("[%s] = %s", i, arr[i]);
+        }
     }
 
 }

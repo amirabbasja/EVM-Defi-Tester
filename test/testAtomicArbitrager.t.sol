@@ -513,7 +513,8 @@ contract AtomicArbitragerTester is Test {
             extra: abi.encode()
         });
 
-        atomicArbitrager._swapUniswapV2(swapParams);
+        uint256 out = atomicArbitrager._swapUniswapV2(swapParams);
+        console.log("USDT amount out from swap - Uniswap v2:", out);
         assert(0 < USDT.balanceOf(address(atomicArbitrager)));
         vm.stopPrank();
     }
@@ -536,8 +537,8 @@ contract AtomicArbitragerTester is Test {
             deadline: block.timestamp + 300,
             extra: abi.encode(500 ,0 ,0) // TODO: Made the fee fixed to 500. Make it modular later
         });
-
-        atomicArbitrager._swapUniswapV3(swapParams);
+        uint256 out = atomicArbitrager._swapUniswapV3(swapParams);
+        console.log("USDT amount out from swap - Uniswap v3:", out);
         assert(0 < USDT.balanceOf(address(atomicArbitrager)));
         console.log("USDT balance after swap:", USDT.balanceOf(address(atomicArbitrager)));
         vm.stopPrank();
@@ -561,7 +562,8 @@ contract AtomicArbitragerTester is Test {
             extra: abi.encode()
         });
 
-        atomicArbitrager._swapSushiswapV2(swapParams);
+        uint256 out = atomicArbitrager._swapSushiswapV2(swapParams);
+        console.log("USDT amount out from swap - Sushiswap v2:", out);
         assert(0 < USDT.balanceOf(address(atomicArbitrager)));
         vm.stopPrank();
     }
@@ -585,7 +587,8 @@ contract AtomicArbitragerTester is Test {
             extra: abi.encode(500 ,0 ,0) // TODO: Made the fee fixed to 500. Make it modular later
         });
 
-        atomicArbitrager._swapSushiswapV3(swapParams);
+        uint256 out = atomicArbitrager._swapSushiswapV3(swapParams);
+        console.log("USDT amount out from swap - Sushiswap v3:", out);
         assert(0 < USDT.balanceOf(address(atomicArbitrager)));
         console.log("USDT balance after swap:", USDT.balanceOf(address(atomicArbitrager)));
         vm.stopPrank();
@@ -609,7 +612,8 @@ contract AtomicArbitragerTester is Test {
             extra: abi.encode()
         });
 
-        atomicArbitrager._swapCamelotV2(swapParams);
+        uint256 out = atomicArbitrager._swapCamelotV2(swapParams);
+        console.log("USDT amount out from swap - Camelot v2:", out);
         assert(0 < USDT.balanceOf(address(atomicArbitrager)));
         vm.stopPrank();
     }
@@ -633,7 +637,8 @@ contract AtomicArbitragerTester is Test {
             extra: abi.encode(0 ,0) // TODO: Made the fee fixed to 500. Make it modular later
         });
 
-        atomicArbitrager._swapCamelotV3(swapParams);
+        uint256 out = atomicArbitrager._swapCamelotV3(swapParams);
+        console.log("USDT amount out from swap - Camelot v3:", out);
         assert(0 < USDT.balanceOf(address(atomicArbitrager)));
         console.log("USDT balance after swap:", USDT.balanceOf(address(atomicArbitrager)));
         vm.stopPrank();
@@ -657,7 +662,8 @@ contract AtomicArbitragerTester is Test {
             extra: abi.encode()
         });
 
-        atomicArbitrager._swapPancakeswapV2(swapParams);
+        uint256 out = atomicArbitrager._swapPancakeswapV2(swapParams);
+        console.log("USDT amount out from swap - Pancakeswap v2:", out);
         assert(0 < USDT.balanceOf(address(atomicArbitrager)));
         vm.stopPrank();
     }
@@ -681,7 +687,8 @@ contract AtomicArbitragerTester is Test {
             extra: abi.encode(500 ,0 ,0) // TODO: Made the fee fixed to 500. Make it modular later
         });
 
-        atomicArbitrager._swapPancakeswapV3(swapParams);
+        uint256 out = atomicArbitrager._swapPancakeswapV3(swapParams);
+        console.log("USDT amount out from swap - Pancakeswap v3:", out);
         assert(0 < USDT.balanceOf(address(atomicArbitrager)));
         console.log("USDT balance after swap:", USDT.balanceOf(address(atomicArbitrager)));
         vm.stopPrank();
@@ -841,6 +848,84 @@ contract AtomicArbitragerTester is Test {
             })
         );
         assert(0 < USDT.balanceOf(address(atomicArbitrager)));
+        vm.stopPrank();
+    }
+
+    function test_makeArb() public 
+        WithDeployedUniswapV2Pool 
+        WithDeployedUniswapV3Pool 
+        WithDeployedSushiswapV2Pool
+        WithDeployedSushiswapV3Pool
+        WithDeployedCamelotV2Pool
+        WithDeployedCamelotV3Pool
+        WithDeployedCamelotV3Pool
+        WithDeployedPancakeswapV2Pool
+        WithDeployedPancakeswapV3Pool
+    {
+        vm.startPrank(TESTER_ADDRESS);
+        vm.deal(TESTER_ADDRESS, 10 ether);
+        uint256 balanceBefore = address(TESTER_ADDRESS).balance;
+        console.log("Testing make arb");
+        console.log("Balance before:", balanceBefore);
+        console.log("Weth address", address(WETH));
+        console.log("Usdt address", address(USDT));
+        console.logBytes( abi.encode());
+        console.logBytes(abi.encode(500,0,0));
+        
+        atomicArbitrager.makeArb{value: 1 ether}(
+            0, 
+            1, 
+            1 ether, 
+            address(WETH), 
+            address(USDT), 
+            abi.encode(), 
+            abi.encode(500,0,0),
+            false
+        ) ;
+        uint256 balanceAfter = address(TESTER_ADDRESS).balance;
+        console.log("Balance after:", balanceAfter);
+
+        // Due to fees and slippage and pools' equal initial price, the balance should decrease 
+        assert(balanceAfter < balanceBefore);
+        vm.stopPrank();
+    }
+
+    function test_makeTokenArb() public 
+        WithDeployedUniswapV2Pool 
+        WithDeployedUniswapV3Pool 
+        WithDeployedSushiswapV2Pool
+        WithDeployedSushiswapV3Pool
+        WithDeployedCamelotV2Pool
+        WithDeployedCamelotV3Pool
+        WithDeployedCamelotV3Pool
+        WithDeployedPancakeswapV2Pool
+        WithDeployedPancakeswapV3Pool
+    {
+        vm.startPrank(TESTER_ADDRESS);
+        vm.deal(TESTER_ADDRESS, 10 ether);
+        uint256 balanceBefore = address(TESTER_ADDRESS).balance;
+        console.log("Testing make arb");
+        console.log("Balance before:", balanceBefore);
+        console.log("Weth address", address(WETH));
+        console.log("Usdt address", address(USDT));
+        console.logBytes( abi.encode());
+        console.logBytes(abi.encode(500,0,0));
+        // will revert because it has no erc20 balance in it
+        atomicArbitrager.makeTokenArb(
+            0, 
+            1, 
+            1 ether, 
+            address(WETH), 
+            address(USDT), 
+            abi.encode(), 
+            abi.encode(500,0,0),
+            false
+        ) ;
+        uint256 balanceAfter = address(TESTER_ADDRESS).balance;
+        console.log("Balance after:", balanceAfter);
+
+        // Due to fees and slippage and pools' equal initial price, the balance should decrease 
+        assert(balanceAfter < balanceBefore);
         vm.stopPrank();
     }
 }
